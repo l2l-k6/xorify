@@ -39,24 +39,27 @@ const char * argp_program_bug_address =
 
 // program description:
 const char doc[] =
-	"xorify -- A program calculating bitwise XOR of two given files.\v"
-	"Principal use of this program is to higlight differences in binary "
-	"files.\n\n";
+	"xorify -- A program calculating bitwise XOR of IN_FILE_0 and IN_FILE_1. "
+	"If IN_FILE_1 is omitted, stdin is used instead.\v"
+	"Principal use of this program is to highlight differences in binary "
+	"files.";
 
 // non-option arguments description:
-const char args_doc[] = "IN_FILE_1 IN_FILE_2";
+const char args_doc[] = "IN_FILE_0 [IN_FILE_1]";
 
 // communication between parse_opt() and main():
 struct arguments {
 	int i;					/* number of command line arguments processed */
 	int verbosity;				/* verbosity option */
-	char * fn_in_0, fn_in_1, fn_out;	/* input and output file names */
+	const char * fn_in_0;			/* first input file name */
+	const char * fn_in_1;			/* secound input file name */
+	const char * fn_out;			/* output file name */
 };
 
 // option arguments we understand:
 const struct argp_option options[] = {
 	{"verbose", 'v', 0, 0, "Produce verbose output"},
-	{"output", 'o',  "fn_out",  , "Output file name (if omitted stdout is used)"},
+	{"output", 'o',  "OUT_FILE", 0, "Output file name (if omitted, stdout is used)"},
 	{0}
 };
 
@@ -64,7 +67,6 @@ const struct argp_option options[] = {
 error_t parse_opt (int key, char * arg, struct argp_state * state) {
 
 	struct arguments * arguments = state->input; // communication with main()
-	char ** tailptr; // used to detect incorrect values of upper or lower limits
 	
 	switch (key) {
 
@@ -72,6 +74,9 @@ error_t parse_opt (int key, char * arg, struct argp_state * state) {
 		case ARGP_KEY_INIT:
 			arguments->i = 0;
 			arguments->verbosity = 0;
+			arguments->fn_in_0 = NULL;
+			arguments->fn_in_1 = NULL;
+			arguments->fn_out = NULL;
 			break;
 		
 		// parse verbosity flags:
@@ -88,32 +93,38 @@ error_t parse_opt (int key, char * arg, struct argp_state * state) {
 		// parse input file names:
 		case ARGP_KEY_ARG:
 			switch(arguments->i) {
-
-				// no input file names yet parsed:
+				// parsing first input file name:
 				case 0:
 					arguments->fn_in_0 = arg;
-					arguments->i++;
 					break;
 
-				// one input file name parsed:
+				// parsing second input file name:
 				case 1:
 					arguments->fn_in_1 = arg;
-					arguments->i++;
 					break;
 			}
+			arguments->i++;
 			break; // case ARGP_KEY_ARG
 
-			// Check, wheather we’ve got all neccessary options
-			case ARGP_KEY_END:
+		// check, whether we’ve got all neccessary arguments
+		case ARGP_KEY_END:
+			if (arguments->i > 2) {
+				argp_error(state,
+					"Too many command line arguments. Only IN_FILE_0 and IN_FILE_1 are supported.");
+			}
+			if (arguments->i < 1) {
+				argp_error(state, "Mandatory argument IN_FILE_0 is missing.");
+			}
+			break;
 				
-			// parsing has been terminated with an error:
-			case ARGP_KEY_ERROR:
-				fprintf(stderr, "Argument parsing has been terminated due to an error!\n");
-				break;
+		// parsing has been terminated with an error:
+		case ARGP_KEY_ERROR:
+			fprintf(stderr, "Argument parsing has been terminated due to an error!\n");
+			break;
 
-			// catch all:
-			default:
-				return ARGP_ERR_UNKNOWN;
+		// catch all:
+		default:
+			return ARGP_ERR_UNKNOWN;
 	} // switch (key)
 
 	return 0;
@@ -129,9 +140,52 @@ int main (int argc, char **argv) {
 	// get us a communication channel with the parser:
 	struct arguments arguments;
 
-	//parse our arguments, all the work is done there:
+	// parse our arguments:
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
-	return arguments.retcode;
+	// open all needed streams:
+	FILE * fp_in_0;
+	FILE * fp_in_1;
+	FILE * fp_out;
+	if (!(fp_in_0 = fopen(arguments.fn_in_0,"r"))) {
+		fprintf(stderr, "%s: %s\n", arguments.fn_in_0, strerror(errno));
+		return EXIT_FAILURE;
+	} else if(arguments.verbosity)
+		fprintf(stderr, "%s: Successfully opened for reading.\n", arguments.fn_in_0);
 
-};
+	if (!arguments.fn_in_1) {
+		fp_in_1 = stdin;
+		if (arguments.verbosity) fprintf(stderr, "IN_FILE_1 not provided, using stdin.\n");
+	} else {
+		if (!(fp_in_1 = fopen(arguments.fn_in_1,"r"))) {
+			fprintf(stderr, "%s: %s\n", arguments.fn_in_0, strerror(errno));
+			return EXIT_FAILURE;
+		} else if (arguments.verbosity) {
+			fprintf(stderr, "%s: Successfully opened for reading.\n", arguments.fn_in_1);
+		}
+	}
+
+	if (!arguments.fn_out) {
+		fp_out = stdout;
+		if (arguments.verbosity) fprintf(stderr, "OUT_FILE not provided, using stdout.\n");
+	} else {
+		if (!(fp_out = fopen(arguments.fn_out,"w"))) {
+			fprintf(stderr, "%s: %s\n", arguments.fn_out, strerror(errno));
+			return EXIT_FAILURE;
+		} else if (arguments.verbosity) {
+			fprintf(stderr, "%s: Successfully opened for writing.\n", arguments.fn_out);
+		}
+	}
+
+	// do our main task:
+	int in_0, in_1;
+	while(in_0=1) {
+	}
+
+	// close opened streams:
+	fclose(fp_in_0);
+	fclose(fp_in_1);
+	fclose(fp_out);
+
+	return EXIT_SUCCESS;
+}
