@@ -32,7 +32,7 @@
 
 /* Argument parser setup -- START */
 // program version:
-const char *argp_program_version = "xorify 1.1";
+const char *argp_program_version = "xorify 1.2";
 
 // contact address:
 const char * argp_program_bug_address =
@@ -169,6 +169,7 @@ int main (int argc, char **argv) {
 
 	if (!arguments.fn_out) {
 		fp_out = stdout;
+		arguments.fn_out = "<stdout>";
 		if (arguments.verbosity) fprintf(stderr, "OUT_FILE not provided, using stdout.\n");
 	} else {
 		if (!(fp_out = fopen(arguments.fn_out,"w"))) {
@@ -206,25 +207,25 @@ int main (int argc, char **argv) {
 	}
 
 	// close opened streams:
-	if (EOF != fclose(fp_out) && arguments.verbosity) {
-		fprintf(stderr, "%s: Successfully closed.\n", arguments.fn_out);
-	} else {
+	if (EOF == fclose(fp_out)) {
 		fprintf(stderr, "%s: %s\n", arguments.fn_out, strerror(errno));
 		return EXIT_FAILURE;
+	} else if (arguments.verbosity) {
+		fprintf(stderr, "%s: Successfully closed.\n", arguments.fn_out);
 	}
 
-	if (EOF != fclose(fp_in_1) && arguments.verbosity) {
-		fprintf(stderr, "%s: Successfully closed.\n", arguments.fn_in_1);
-	} else {
+	if (EOF == fclose(fp_in_1)) {
 		fprintf(stderr, "%s: %s\n", arguments.fn_in_1, strerror(errno));
 		return EXIT_FAILURE;
+	} else if (arguments.verbosity) {
+		fprintf(stderr, "%s: Successfully closed.\n", arguments.fn_in_1);
 	}
 
-	if (EOF != fclose(fp_in_0) && arguments.verbosity) {
-		fprintf(stderr, "%s: Successfully closed.\n", arguments.fn_in_0);
-	} else {
+	if (EOF == fclose(fp_in_0)) {
 		fprintf(stderr, "%s: %s\n", arguments.fn_in_0, strerror(errno));
 		return EXIT_FAILURE;
+	} else if (arguments.verbosity) {
+		fprintf(stderr, "%s: Successfully closed.\n", arguments.fn_in_0);
 	}
 
 	return EXIT_SUCCESS;
