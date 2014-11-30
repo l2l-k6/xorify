@@ -32,7 +32,7 @@
 
 /* Argument parser setup -- START */
 // program version:
-const char *argp_program_version = "xorify 1.2";
+const char *argp_program_version = "xorify 1.3";
 
 // contact address:
 const char * argp_program_bug_address =
@@ -193,7 +193,9 @@ int main (int argc, char **argv) {
 		if (in_c_1 == EOF) {
 			eof_1 = true;
 		}
-		if(eof_0 || eof_1) {
+		if (eof_0 && eof_1) {
+			break;
+		} else if (eof_0 || eof_1) {
 			out_c = 0xFF;
 		} else {
 			out_c = in_c_0 ^ in_c_1;
