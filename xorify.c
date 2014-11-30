@@ -27,11 +27,12 @@
 #include <limits.h>
 #include <errno.h>
 #include <string.h>
+#include <stdbool.h>
 #include <argp.h>
 
 /* Argument parser setup -- START */
 // program version:
-const char *argp_program_version = "xorify 1.0";
+const char *argp_program_version = "xorify 1.1";
 
 // contact address:
 const char * argp_program_bug_address =
@@ -144,9 +145,9 @@ int main (int argc, char **argv) {
 	argp_parse(&argp, argc, argv, 0, 0, &arguments);
 
 	// open all needed streams:
-	FILE * fp_in_0;
-	FILE * fp_in_1;
-	FILE * fp_out;
+	FILE * fp_in_0 = NULL;
+	FILE * fp_in_1 = NULL;
+	FILE * fp_out = NULL;
 	if (!(fp_in_0 = fopen(arguments.fn_in_0,"r"))) {
 		fprintf(stderr, "%s: %s\n", arguments.fn_in_0, strerror(errno));
 		return EXIT_FAILURE;
@@ -154,6 +155,7 @@ int main (int argc, char **argv) {
 		fprintf(stderr, "%s: Successfully opened for reading.\n", arguments.fn_in_0);
 
 	if (!arguments.fn_in_1) {
+		arguments.fn_in_1 = "<stdin>";
 		fp_in_1 = stdin;
 		if (arguments.verbosity) fprintf(stderr, "IN_FILE_1 not provided, using stdin.\n");
 	} else {
@@ -178,14 +180,52 @@ int main (int argc, char **argv) {
 	}
 
 	// do our main task:
-	int in_0, in_1;
-	while(in_0=1) {
+	int in_c_0, in_c_1, out_c;
+	bool eof_0 = false;
+	bool eof_1 = false;
+	while(!eof_0 || !eof_1) {
+		in_c_0 = getc(fp_in_0);
+		if (in_c_0 == EOF) {
+			eof_0 = true;
+		}
+		in_c_1 = getc(fp_in_1);
+		if (in_c_1 == EOF) {
+			eof_1 = true;
+		}
+		if(eof_0 || eof_1) {
+			out_c = 0xFF;
+		} else {
+			out_c = in_c_0 ^ in_c_1;
+		}
+
+		out_c = putc(out_c, fp_out);
+		if (out_c == EOF) {
+			fprintf(stderr, "%s: %s\n", arguments.fn_out, strerror(errno));
+			return EXIT_FAILURE;
+		}
 	}
 
 	// close opened streams:
-	fclose(fp_in_0);
-	fclose(fp_in_1);
-	fclose(fp_out);
+	if (EOF != fclose(fp_out) && arguments.verbosity) {
+		fprintf(stderr, "%s: Successfully closed.\n", arguments.fn_out);
+	} else {
+		fprintf(stderr, "%s: %s\n", arguments.fn_out, strerror(errno));
+		return EXIT_FAILURE;
+	}
+
+	if (EOF != fclose(fp_in_1) && arguments.verbosity) {
+		fprintf(stderr, "%s: Successfully closed.\n", arguments.fn_in_1);
+	} else {
+		fprintf(stderr, "%s: %s\n", arguments.fn_in_1, strerror(errno));
+		return EXIT_FAILURE;
+	}
+
+	if (EOF != fclose(fp_in_0) && arguments.verbosity) {
+		fprintf(stderr, "%s: Successfully closed.\n", arguments.fn_in_0);
+	} else {
+		fprintf(stderr, "%s: %s\n", arguments.fn_in_0, strerror(errno));
+		return EXIT_FAILURE;
+	}
 
 	return EXIT_SUCCESS;
 }
