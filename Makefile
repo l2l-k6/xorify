@@ -14,9 +14,8 @@ install: all
 clean:
 	$(RM) -f *~ *.o xorify
 
-zcount: xorify.o
+xorify: xorify.o
 	$(CC) $(CFLAGS) -o $@ $<
 
-zcount.o: xorify.c
+xorify.o: src/xorify.c
 	$(CC) $(CFLAGS) -c -o $@ $<
-
